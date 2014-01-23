@@ -5,6 +5,7 @@ class ApplicationPhpCookbook
         klass.send(:include, ApplicationCookbook::ResourceBase)
         klass.attribute :database_master_role, :kind_of => String
         klass.attribute :composer, :kind_of => [TrueClass, FalseClass], :default => false
+        klass.attribute :share_vendors, :kind_of => [TrueClass, FalseClass], :default => true
         klass.attribute :composer_command, :kind_of => String, :default => 'composer'
         klass.attribute :composer_options, :kind_of => String
         klass.attribute :pear_packages, :kind_of => [Array, Hash], :default => {}
@@ -20,19 +21,21 @@ class ApplicationPhpCookbook
         klass.action(:before_migrate) do
           run_before_migrate_setup
           if(new_resource.composer)
-            Chef::Log.info 'Running composer install'
-            directory "#{new_resource.path}/shared/vendor" do
-              owner new_resource.owner
-              group new_resource.group
-              mode 0755
-            end
-            directory "#{new_resource.release_path}/vendor" do
-              action :delete
-              recursive true
-            end
-            link "#{new_resource.release_path}/vendor" do
-              to "#{new_resource.path}/shared/vendor"
-            end
+            if(new_resource.share_vendors)
+              Chef::Log.info 'Running composer install'
+              directory "#{new_resource.path}/shared/vendor" do
+                owner new_resource.owner
+                group new_resource.group
+                mode 0755
+              end
+              directory "#{new_resource.release_path}/vendor" do
+                action :delete
+                recursive true
+              end
+              link "#{new_resource.release_path}/vendor" do
+                to "#{new_resource.path}/shared/vendor"
+              end
+            end  
             execute "#{new_resource.composer_command} install -n -q #{new_resource.composer_options}" do
               cwd new_resource.release_path
               user new_resource.owner
